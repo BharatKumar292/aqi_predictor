@@ -1,0 +1,39 @@
+name: Hourly Feature Pipeline
+
+on:
+  schedule:
+    # Runs at minute 0 of every hour (UTC)
+    - cron: '0 * * * *'
+  workflow_dispatch:  # allows manual trigger from the GitHub Actions tab
+
+permissions:
+  contents: write  # needed so the workflow can commit updated data back to the repo
+
+jobs:
+  run-feature-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run feature pipeline
+        env:
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+        run: python -m src.feature_pipeline
+
+      - name: Commit updated features
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/aqi_features.csv
+          git diff --staged --quiet || git commit -m "Auto-update AQI features [skip ci]"
+          git push

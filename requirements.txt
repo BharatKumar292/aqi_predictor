@@ -1,0 +1,7 @@
+requests
+pandas
+python-dotenv
+scikit-learn
+numpy
+streamlit
+hopsworks
