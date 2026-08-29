@@ -1,4 +1,3 @@
-```python
 """
 Trains the "3-Day Forecast" models.
 
@@ -347,12 +346,21 @@ def save_model(
                         f
                     )
 
+                # Hopsworks stores metrics as JSON, which doesn't allow
+                # NaN values - replace NaN with 0.0 just for the upload.
+                def clean_metric(value):
+                    if value is None:
+                        return 0.0
+                    if isinstance(value, float) and value != value:  # NaN check
+                        return 0.0
+                    return value
+
                 py_model = mr.python.create_model(
                     name=f"aqi_model_{horizon_hours}h",
                     metrics={
-                        "rmse": result["rmse"],
-                        "mae": result["mae"],
-                        "r2": result["r2"],
+                        "rmse": clean_metric(result["rmse"]),
+                        "mae": clean_metric(result["mae"]),
+                        "r2": clean_metric(result["r2"]),
                     },
                     description=(
                         f"AQI forecast model, "
@@ -517,4 +525,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```

@@ -310,12 +310,25 @@ def main():
                         f
                     )
 
+                # Hopsworks stores metrics as JSON, and JSON does not
+                # support NaN values. R2 can come out as NaN when there
+                # are too few test rows to calculate it properly, so we
+                # replace NaN with 0.0 here just for the upload - the
+                # real value (including NaN, if that's what it is) is
+                # still saved correctly in our local model_current.pkl.
+                def clean_metric(value):
+                    if value is None:
+                        return 0.0
+                    if isinstance(value, float) and value != value:  # NaN check
+                        return 0.0
+                    return value
+
                 py_model = mr.python.create_model(
                     name="aqi_model_current",
                     metrics={
-                        "rmse": best_rmse,
-                        "mae": best_mae,
-                        "r2": best_r2
+                        "rmse": clean_metric(best_rmse),
+                        "mae": clean_metric(best_mae),
+                        "r2": clean_metric(best_r2)
                     },
                     description=(
                         "Current AQI prediction model "

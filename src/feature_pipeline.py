@@ -1,4 +1,3 @@
-```python
 """
 Feature Pipeline
 ================
@@ -73,6 +72,13 @@ def fetch_all_cities():
 def push_to_hopsworks(df):
     """
     Push only newly collected rows to Hopsworks.
+
+    The Hopsworks feature group's schema includes weather columns
+    (temperature, humidity, etc) because the live hourly pipeline
+    collects them. Backfilled historical rows don't have weather data
+    (see the note at the top of backfill.py) - so if those columns
+    are missing from the dataframe, we add them as empty (null)
+    values before pushing, so the row still matches the schema.
     """
 
     try:
@@ -85,6 +91,14 @@ def push_to_hopsworks(df):
             return
 
         hw_df = df.copy()
+
+        weather_columns = [
+            "temperature", "humidity", "pressure",
+            "wind_speed", "wind_deg", "cloudiness", "rain_1h",
+        ]
+        for col in weather_columns:
+            if col not in hw_df.columns:
+                hw_df[col] = None
 
         hw_df["timestamp_unix"] = (
             hw_df["timestamp"].astype("int64")
@@ -188,4 +202,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```

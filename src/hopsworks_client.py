@@ -1,10 +1,4 @@
-"""
-Hopsworks connection for the AQI project.
-
-This file handles the connection to Hopsworks,
-the feature store, and the model registry.
-"""
-
+import os
 import hopsworks
 
 from src.config import HOPSWORKS_API_KEY
@@ -15,11 +9,23 @@ FEATURE_GROUP_VERSION = 1
 
 _project = None
 
+
+def _ensure_tmp_folder_exists():
+    """
+    On Windows, the hopsworks library tries to use a '/tmp' path
+    internally for storing connection certificates. Windows turns
+    '/tmp' into 'C:\\tmp', which crashes with WinError 3 if that
+    folder doesn't already exist. Creating it ahead of time fixes it.
+    On Linux/Mac (like GitHub Actions), /tmp already exists, so this
+    does nothing there.
+    """
+    if os.name == "nt":
+        os.makedirs(r"C:\tmp", exist_ok=True)
+
+
 def get_project():
     """
     Connect to the Hopsworks project.
-    The connection is saved so we do not log in
-    again every time the function is called.
     """
 
     global _project
@@ -28,12 +34,26 @@ def get_project():
         return _project
 
     if not HOPSWORKS_API_KEY:
-        print( "[hopsworks] HOPSWORKS_API_KEY is not set.")
+        print("[hopsworks] HOPSWORKS_API_KEY is not set.")
         return None
 
+    _ensure_tmp_folder_exists()
+
     try:
+        cert_folder = os.path.join(
+            os.environ.get("TEMP", r"C:\tmp"),
+            "hopsworks_certs"
+        )
+
+        os.makedirs(
+            cert_folder,
+            exist_ok=True
+        )
+
         _project = hopsworks.login(
-            api_key_value=HOPSWORKS_API_KEY
+            api_key_value=HOPSWORKS_API_KEY,
+            cert_folder=cert_folder,
+            engine="python"
         )
 
         print(
@@ -50,12 +70,6 @@ def get_project():
 
 
 def get_feature_group():
-    """
-    Get the AQI feature group from Hopsworks.
-
-    If the feature group does not exist,
-    Hopsworks will create it.
-    """
 
     project = get_project()
 
@@ -77,6 +91,7 @@ def get_feature_group():
             ],
             event_time="timestamp",
             online_enabled=False,
+            time_travel_format="HUDI",
         )
 
         return fg
@@ -88,8 +103,8 @@ def get_feature_group():
         )
         return None
 
+
 def get_model_registry():
-    # Get the Hopsworks model registry.
 
     project = get_project()
 
@@ -100,7 +115,8 @@ def get_model_registry():
         return project.get_model_registry()
 
     except Exception as e:
-        print(f"[hopsworks] Could not access "
+        print(
+            f"[hopsworks] Could not access "
             f"model registry: {e}"
         )
         return None
