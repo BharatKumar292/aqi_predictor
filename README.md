@@ -1,87 +1,341 @@
-# AQI Predictor - Sukkur, Karachi, Lahore
+# 🌫️ AQI Predictor — Sukkur, Karachi & Lahore
 
-Predicts current and 3-day-ahead Air Quality Index for three Pakistani
-cities, using data from the OpenWeather API. Built as part of the
-10Pearls Shine Internship (Data Science track).
+An end-to-end **Air Quality Index (AQI) prediction and forecasting system** for
+Sukkur, Karachi, and Lahore.
 
-## What's in this project
+The project collects real-time air pollution and weather data from the
+**OpenWeather API**, stores features in **Hopsworks Feature Store**, trains
+machine learning models, and provides current AQI predictions and
+**1–3 day AQI forecasts** through a deployed Streamlit dashboard.
 
-| Part | File | What it does |
-|---|---|---|
-| Feature pipeline | `src/feature_pipeline.py` | Fetches live pollution + weather data every hour |
-| Backfill | `src/backfill.py` | Pulls ~2 months of historical pollution data (one-time) |
-| Current AQI model | `src/train_current.py` | Predicts AQI from live pollutant/weather readings |
-| Forecast models | `src/train_forecast.py` | Predicts AQI 24h / 48h / 72h ahead |
-| Automation | `.github/workflows/*.yml` | Runs the above on a schedule via GitHub Actions |
-| Dashboard | `app.py` | Streamlit app showing everything |
+Built as part of the **10Pearls Shine Internship — Data Science Track**.
 
-## Why two separate models?
+---
 
-This is the most important design decision in the project, so it's
-worth explaining clearly:
+## 🚀 Project Overview
 
-**`train_current.py`** answers "what is the AQI right now, given these
-pollutant readings?" It only uses raw sensor-style features (PM2.5,
-PM10, CO, NO2, temperature, etc). It is NOT allowed to use AQI itself
-as an input, because AQI is basically calculated FROM these pollutant
-values (see `feature_engineering.py`, `compute_aqi()`). Using AQI to
-predict AQI would just be circular - the model would be "cheating" by
-seeing something close to the answer.
+The system performs the complete machine learning pipeline:
 
-**`train_forecast.py`** answers "what will AQI be in 1-3 days?" Nobody
-has real pollutant readings from the future, so this model instead
-looks at how AQI moved recently - the current AQI, AQI from a few hours
-ago, AQI from a day ago, and a rolling average. Using PAST AQI values
-to predict a FUTURE AQI value is normal time-series forecasting, not
-leakage, because the model never actually sees the value it's trying
-to predict.
+**OpenWeather API → Feature Engineering → Hopsworks Feature Store →
+Model Training → Hopsworks Model Registry → Streamlit Dashboard**
 
-## Setup
+### Cities
 
-```cmd
+- 🇵🇰 Sukkur
+- 🇵🇰 Karachi
+- 🇵🇰 Lahore
+
+### Main capabilities
+
+- Real-time pollution data collection
+- Historical pollution data collection
+- AQI calculation from pollutant concentrations
+- Feature engineering
+- Current AQI prediction
+- 24-hour AQI forecasting
+- 48-hour AQI forecasting
+- 72-hour AQI forecasting
+- Automated hourly feature pipeline
+- Model versioning with Hopsworks
+- Interactive Streamlit dashboard
+
+---
+
+## 🏗️ Project Architecture
+
+```text
+                OpenWeather API
+                       │
+                       ▼
+              ┌─────────────────┐
+              │  Data Collection │
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Feature         │
+              │ Engineering     │
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Hopsworks       │
+              │ Feature Store   │
+              └────────┬────────┘
+                       │
+             ┌─────────┴─────────┐
+             ▼                   ▼
+     Current AQI Model     Forecast Models
+        Ridge / RF          24h / 48h / 72h
+             │                   │
+             └─────────┬─────────┘
+                       ▼
+              ┌─────────────────┐
+              │ Hopsworks Model │
+              │ Registry        │
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Streamlit       │
+              │ Dashboard       │
+              └─────────────────┘
+📂 Project Structure
+AQI_Project/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+│
+├── data/
+│   └── aqi_features.csv
+│
+├── models/
+│   ├── model_current.pkl
+│   ├── model_24h.pkl
+│   ├── model_48h.pkl
+│   └── model_72h.pkl
+│
+├── src/
+│   ├── config.py
+│   ├── fetch.py
+│   ├── feature_engineering.py
+│   ├── feature_pipeline.py
+│   ├── backfill.py
+│   ├── train_current.py
+│   ├── train_forecast.py
+│   └── hopsworks_client.py
+│
+└── .github/
+    └── workflows/
+        ├── hourly_feature_pipeline.yml
+        ├── train_current.yml
+        └── train_forecast.yml
+📊 Data & Features
+
+The project uses pollution and weather information collected from
+the OpenWeather API.
+
+Pollution features
+PM2.5
+PM10
+CO
+NO
+NO₂
+O₃
+SO₂
+NH₃
+Weather features
+Temperature
+Humidity
+Pressure
+Wind speed
+Wind direction
+Cloudiness
+Rainfall
+Time features
+Hour
+Day
+Month
+Day of week
+Forecast features
+
+The forecasting models additionally use historical AQI patterns:
+
+Previous AQI
+1-step AQI lag
+3-step AQI lag
+24-step AQI lag
+6-point rolling AQI mean
+AQI change rate
+🤖 Machine Learning Models
+Current AQI Prediction
+
+The current model predicts AQI using environmental readings available
+at the current time.
+
+It does not use previous AQI values as input.
+
+Models evaluated:
+
+Ridge Regression
+Random Forest Regressor
+
+The model with the lowest RMSE is selected and registered in Hopsworks.
+
+AQI Forecasting
+
+Three separate models are used for future predictions:
+
+Model	Forecast
+aqi_model_24h	24 hours ahead
+aqi_model_48h	48 hours ahead
+aqi_model_72h	72 hours ahead
+
+The forecast models use recent AQI history and engineered features to
+predict future AQI.
+
+🔒 Avoiding Data Leakage
+
+Data leakage is an important consideration in this project.
+
+The current AQI model does not use AQI itself as an input feature
+because AQI is calculated from pollutant concentrations.
+
+Using AQI to predict the same AQI value would allow the model to see
+information that is essentially the target itself.
+
+For forecasting, previous AQI values are allowed because they are known
+before the future prediction time.
+
+For example:
+
+Past AQI ───────► Current time ───────► Future AQI
+  70                  80                    ?
+
+The model can use the 70 and 80 values because they were already
+available before the future AQI occurred.
+
+☁️ Hopsworks
+
+Hopsworks is used as the project's cloud ML infrastructure.
+
+Feature Store
+
+The AQI feature group stores:
+
+Pollution features
+Weather features
+Time features
+AQI values
+Forecast features
+City information
+Timestamps
+Model Registry
+
+The trained models are versioned in Hopsworks:
+
+aqi_model_current
+aqi_model_24h
+aqi_model_48h
+aqi_model_72h
+
+This allows the dashboard to load the latest registered model versions.
+
+⚙️ Automated Hourly Pipeline
+
+GitHub Actions automatically runs the feature pipeline on an hourly
+schedule.
+
+GitHub Actions
+      │
+      ▼
+OpenWeather API
+      │
+      ▼
+Feature Engineering
+      │
+      ▼
+Hopsworks Feature Store
+      │
+      ▼
+Updated AQI Data
+
+This allows the feature store to continuously receive new readings
+without manually running the pipeline.
+
+📈 Streamlit Dashboard
+
+The project includes an interactive Streamlit dashboard showing:
+
+Current AQI for all three cities
+Current pollutant levels
+Historical AQI trends
+Pollutant trends
+24-hour forecast
+48-hour forecast
+72-hour forecast
+Model performance metrics
+Feature importance
+City comparison
+
+The dashboard loads data and models from Hopsworks, with local files
+available as a fallback.
+
+🛠️ Technologies Used
+Programming
+Python
+Data Science & Machine Learning
+Pandas
+NumPy
+Scikit-learn
+Matplotlib
+APIs & Data
+OpenWeather API
+MLOps & Cloud
+Hopsworks
+Feature Store
+Model Registry
+GitHub Actions
+Dashboard
+Streamlit
+Development
+Git
+GitHub
+⚙️ Setup
+
+Clone the repository and install the dependencies:
+
 pip install -r requirements.txt
-set OPENWEATHER_API_KEY=your_key_here
-set HOPSWORKS_API_KEY=your_hopsworks_key_here
 
-python -m src.feature_pipeline    # fetch current data
-python -m src.backfill            # pull ~2 months of history (run once)
-python -m src.train_current       # train the current-AQI model
-python -m src.train_forecast      # train the 3 forecast models
-streamlit run app.py              # launch the dashboard
-```
+Set your API keys:
 
-## Known limitations
+Windows CMD
+set OPENWEATHER_API_KEY=your_openweather_key
+set HOPSWORKS_API_KEY=your_hopsworks_key
 
-- OpenWeather's free plan only gives historical WEATHER data for about
-  a week back (historical POLLUTION data goes back much further, to
-  Nov 2020, so that part is fine). This means backfilled rows only have
-  pollutant columns filled in - temperature, humidity, wind, etc. are
-  empty for old rows and only fill in going forward as the hourly
-  pipeline runs. Because of this, the current-AQI model can only train
-  on the smaller set of rows that do have weather data.
-- The 3-day forecast doesn't use real future weather forecasts (that
-  would need a paid API tier), so it relies on recent AQI patterns
-  instead. Accuracy naturally drops the further out you forecast.
-- Wind direction, cloudiness, and rainfall are only available for
-  live/current readings, not historical ones, so they're shown on the
-  dashboard but not used as model training features.
+Run the feature pipeline:
 
-## Setting up GitHub Actions automation
+python -m src.feature_pipeline
 
-1. Push this project to a GitHub repo
-2. Repo Settings -> Secrets and variables -> Actions -> add:
-   - `OPENWEATHER_API_KEY`
-   - `HOPSWORKS_API_KEY`
-3. Go to the Actions tab, run each workflow once manually to check it works
+Backfill historical pollution data:
 
-## Setting up Hopsworks
+python -m src.backfill
 
-1. Sign up free at hopsworks.ai, create a project
-2. Account Settings -> API Keys -> create one, copy it
-3. Set it as `HOPSWORKS_API_KEY` locally and as a GitHub secret
-4. Run any of the pipeline scripts - you'll see `[hopsworks] ...` log
-   lines confirming it connected
+Train the current AQI model:
 
-If `HOPSWORKS_API_KEY` isn't set, everything still works using the
-local CSV/pickle files - Hopsworks is additive, not required for the
-scripts to run.
+python -m src.train_current
+
+Train the forecasting models:
+
+python -m src.train_forecast
+
+Run the dashboard:
+
+streamlit run app.py
+⚠️ Limitations
+Historical weather availability depends on the OpenWeather API plan.
+Historical pollution data and historical weather data have different
+availability.
+Forecast accuracy generally decreases as the prediction horizon
+increases.
+The forecast models do not use actual future weather observations.
+AQI values from different services may differ because different
+providers can use different data sources, update times, AQI standards,
+or calculation methods.
+
+🔮 Future Improvements
+Add more Pakistani cities
+Incorporate weather forecast data
+Improve forecasting models
+Add LSTM/GRU-based time-series models
+Add model monitoring
+Add automated model retraining
+Improve prediction uncertainty estimates
+Add more advanced feature engineering
+
+👨‍💻 Author
+
+Bharat Kumar
+
+BSCS Student | Data Science & Machine Learning
