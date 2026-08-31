@@ -148,6 +148,19 @@ def save_features(df):
     else:
         combined = df.copy()
 
+    # Make sure the weather columns always exist, even if this batch of
+    # data doesn't have any (e.g. backfilled historical rows). Without
+    # this, if the local CSV ever gets rebuilt from backfill data alone,
+    # these columns would be missing entirely instead of just empty -
+    # and train_current.py would crash looking for them.
+    weather_columns = [
+        "temperature", "humidity", "pressure",
+        "wind_speed", "wind_deg", "cloudiness", "rain_1h",
+    ]
+    for col in weather_columns:
+        if col not in combined.columns:
+            combined[col] = None
+
     # Calculate time and lag features using
     # the complete local history.
     combined = add_time_features(

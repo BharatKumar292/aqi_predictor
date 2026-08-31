@@ -6,3 +6,4 @@ numpy
 streamlit
 hopsworks
 confluent-kafka
+plotly

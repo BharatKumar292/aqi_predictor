@@ -341,8 +341,12 @@ def save_model(
                     model_path,
                     "wb"
                 ) as f:
+                    # Same reasoning as train_current.py - saving the full
+                    # payload here, not just the bare model, so the
+                    # dashboard can load it the same way whether it comes
+                    # from Hopsworks or the local file.
                     pickle.dump(
-                        result["model"],
+                        payload,
                         f
                     )
 

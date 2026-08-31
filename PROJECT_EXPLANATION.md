@@ -1,112 +1,114 @@
-# Project Explanation - for presenting to my mentor
+# Project Explanation - notes for talking to my mentor
 
-This is my own plain-English walkthrough of the project, so I can explain
-it without reading from a script.
+Writing this out so I actually understand my own project well enough to
+explain it without reading off a script.
 
-## What problem are we solving?
+## What's the point of this project?
 
-Air pollution in Pakistani cities is often bad enough to affect health,
-but people don't always know how bad it is right now or how it's going
-to change over the next few days. This project builds a system that
-tells you the current AQI and forecasts it 3 days ahead, for three
-cities: Sukkur, Karachi, and Lahore.
+Air quality in a lot of Pakistani cities gets pretty bad, and most people
+don't have an easy way to check how bad it is right now, let alone what
+it'll look like in a few days. So the idea here is: build something that
+tells you both. Current AQI, plus a 3-day forecast, for Sukkur, Karachi,
+and Lahore.
 
-## Why AQI prediction?
+## Why pick AQI prediction as a project?
 
-It's a good project for learning the full ML pipeline because it has
-real, freely available data, a clear number to predict, and a natural
-reason to build both a "right now" model and a "future" model - which
-forces you to actually think about data leakage and forecasting
-properly instead of just calling `model.fit()` once.
+Honestly, it's a good excuse to actually go through the full ML pipeline
+properly - not just load a CSV and call `.fit()`. The data is free and
+public, there's a clear number to predict, and because "predict AQI now"
+and "predict AQI in 3 days" are genuinely different problems, it forces
+you to think about things like data leakage instead of just skipping past
+them.
 
-## Where does the data come from?
+## Where's the data coming from?
 
-OpenWeather's Air Pollution API and Weather API. The pollution API gives
-pollutant concentrations (PM2.5, PM10, CO, NO, NO2, O3, SO2, NH3). The
-weather API gives temperature, humidity, pressure, wind speed and
-direction, cloudiness, and rain.
+OpenWeather - specifically their Air Pollution API and Weather API. The
+pollution one gives PM2.5, PM10, CO, NO, NO2, O3, SO2, and NH3. The
+weather one gives temperature, humidity, pressure, wind (speed and
+direction), cloud cover, and rain.
 
-## Why these features?
+## Why these particular features?
 
-I kept the pollutants because they're always returned and are directly
-tied to air quality. I kept temperature/humidity/pressure/wind because
-they affect how pollution disperses and they're always available too.
-Wind direction, cloudiness, and rain are shown on the dashboard but not
-used to train the forecast models, because OpenWeather's free plan
-doesn't give historical weather data far enough back - so I'd have almost
-no training rows if I required those columns to be filled in.
+The pollutants were an easy call - they're always returned, no missing
+data, and they're directly what AQI is based on. Temperature, humidity,
+pressure and wind speed I kept too, since they affect how pollution
+spreads out and they're available on every live API call.
 
-## Why these three cities?
+Wind direction, cloudiness and rain didn't make the cut for training,
+though they do show up on the dashboard. The issue is OpenWeather's free
+tier doesn't give you historical weather that far back, so if I required
+those columns to be filled in, I'd barely have any training data left.
 
-The project brief specifically asked for Sukkur, Karachi, and Lahore.
-They're also a reasonable mix - Sukkur is smaller and inland, Karachi is
-a large coastal city, Lahore is a large inland city - so the AQI
-patterns aren't identical across them, which makes the city-comparison
-part of the dashboard actually meaningful.
+## Why Sukkur, Karachi, and Lahore specifically?
 
-## How is the data stored in Hopsworks?
+That's what the project brief asked for. They also happen to be a decent
+spread geographically - Sukkur's smaller and inland, Karachi's a big
+coastal city, Lahore's a big inland one - so their AQI patterns don't all
+look the same, which is what makes the city-comparison tab on the
+dashboard actually useful instead of three overlapping lines.
 
-The feature pipeline and backfill script both call a small helper
-(`src/hopsworks_client.py`) that logs into Hopsworks and pushes the
-data into a feature group called `aqi_features`. Hopsworks is the
-"single source of truth" - the training scripts read from it (falling
-back to the local CSV if Hopsworks isn't reachable, so the project
-doesn't break if Hopsworks has a hiccup).
+## How does Hopsworks fit in?
 
-## How is the model trained?
+There's a small helper file, `src/hopsworks_client.py`, that both the
+feature pipeline and the backfill script call to push data into a feature
+group called `aqi_features`. It's meant to be the single source of truth
+- the training scripts pull from there. If Hopsworks happens to be down
+or unreachable for some reason, things fall back to the local CSV instead
+so the project doesn't just stop working.
 
-Two separate training scripts:
-- `train_current.py` trains on rows that have both pollutant AND
-  weather data, using a normal random train/test split, since each row
-  is an independent snapshot (not a future prediction).
-- `train_forecast.py` trains three models (24h, 48h, 72h ahead), using
-  a TIME-based train/test split (train on older data, test on the most
-  recent chunk) - this matters because a random split would let the
-  model accidentally train on data from after the test period, which
-  would make the results look better than they really are.
+## How's the model actually trained?
 
-Both scripts try Ridge Regression and Random Forest, and keep whichever
-one gets the lower RMSE on the test set.
+Two scripts, two different approaches.
 
-## Why was the final model selected?
+`train_current.py` only uses rows where BOTH pollutant and weather data
+are present, and splits train/test randomly, because each row here is
+its own independent snapshot - there's no "future" to accidentally leak.
 
-Whichever model has the lowest RMSE on the held-out test data. I also
-compare against a "naive baseline" (assume AQI doesn't change) for the
-forecast models - if a trained model can't beat that, it isn't actually
-useful.
+`train_forecast.py` is trickier. It splits by TIME instead - train on
+older data, test on the most recent chunk. If I split randomly here, some
+training rows could end up being from after some of the test rows, and
+the model would essentially get to peek at the future during training.
+That's a mistake I want to avoid, not something to hide after the fact.
 
-## How is the 3-day forecast generated?
+Both scripts try Ridge Regression and Random Forest, and whichever scores
+lower RMSE on the test set gets saved.
 
-By training on how AQI has moved in the past relative to itself
-(yesterday's AQI, AQI 3 hours ago, a 6-hour rolling average, etc), not
-by copying today's number. Because I don't have real future weather
-data, this is a fair and honest limitation - it means forecast accuracy
-gets less certain the further ahead you look, which the dashboard and
-report both mention directly instead of hiding it.
+## Why that particular model, though?
 
-## How does Streamlit talk to the model?
+Lowest RMSE on data the model hasn't seen. For the forecast models I also
+check against a naive baseline - basically "assume AQI stays the same" -
+because if a trained model can't beat that, it's not really adding
+anything.
 
-The dashboard loads the saved `.pkl` model files directly with Python's
-`pickle` module and calls `.predict()` on them - no separate API server,
-since Streamlit runs the same Python process that can just import the
-model.
+## How does the 3-day forecast actually work?
 
-## What are the limitations?
+By looking at how AQI has been trending - AQI a few hours ago, AQI a day
+ago, a short rolling average - not by copying today's reading three
+times. I don't have real future weather data to feed in, so this is a
+genuine limitation, and I'd rather say that plainly than pretend the
+forecast is more solid than it is.
 
-- Limited historical weather data (explained above)
-- Training data currently covers about 2 months - more history would
-  help the model learn seasonal patterns
-- No real future weather forecast used, so 3-day accuracy is naturally
-  lower than 24h accuracy
-- Only Ridge Regression and Random Forest were tried - more advanced
-  models (XGBoost, LSTM) were mentioned as optional in the brief but
-  not required for this version
+## How does the dashboard talk to the models?
 
-## What could be improved in the future?
+Pretty directly, actually - Streamlit just loads the saved `.pkl` files
+with Python's `pickle` module and calls `.predict()`. No separate API
+layer needed since it's all the same Python process.
 
-- Add a real weather forecast API as an input to the forecast models
-- Try XGBoost or a simple LSTM and compare against Ridge/Random Forest
-- Collect more historical data over time (the hourly pipeline keeps
-  adding to it automatically)
-- Add SHAP explanations for individual predictions, not just basic
-  feature importance
+## What doesn't work great right now
+
+- Limited historical weather (mentioned above)
+- Training data only covers a couple months so far - more history would
+  help it learn seasonal stuff
+- No real future weather forecast, so the further out the prediction, the
+  shakier it gets
+- Only tried Ridge and Random Forest - the brief mentioned XGBoost/LSTM
+  as optional extras, didn't get to those this time around
+
+## If I had more time
+
+- Feed in an actual weather forecast, not just past weather
+- Try XGBoost, maybe a basic LSTM, see if either beats what I have now
+- Let the hourly pipeline keep running and retrain on the bigger dataset
+  later
+- Proper SHAP explanations instead of the basic feature importance I'm
+  showing now

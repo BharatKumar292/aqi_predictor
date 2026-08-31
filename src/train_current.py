@@ -305,8 +305,13 @@ def main():
                     model_path,
                     "wb"
                 ) as f:
+                    # Saving the full payload (not just the bare model)
+                    # here on purpose - the dashboard needs the feature
+                    # column list too when it loads this model, and it
+                    # loads Hopsworks models the exact same way it loads
+                    # the local .pkl file, so the format needs to match.
                     pickle.dump(
-                        best_model,
+                        payload,
                         f
                     )
 
