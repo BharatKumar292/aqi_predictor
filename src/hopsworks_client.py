@@ -16,8 +16,6 @@ def _ensure_tmp_folder_exists():
     internally for storing connection certificates. Windows turns
     '/tmp' into 'C:\\tmp', which crashes with WinError 3 if that
     folder doesn't already exist. Creating it ahead of time fixes it.
-    On Linux/Mac (like GitHub Actions), /tmp already exists, so this
-    does nothing there.
     """
     if os.name == "nt":
         os.makedirs(r"C:\tmp", exist_ok=True)

@@ -7,12 +7,6 @@ This is different from train_current.py. Here we predict AQI
 The forecast model can use the current AQI and previous AQI values
 because these values are already known when making a forecast.
 
-We train a separate model for each forecast horizon because the
-best model for 24 hours ahead may not be the best model for 72 hours
-ahead.
-
-Run:
-    python -m src.train_forecast
 """
 
 import os

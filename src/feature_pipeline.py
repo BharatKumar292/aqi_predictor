@@ -1,7 +1,6 @@
 """
 Feature Pipeline
 ================
-
 Runs periodically to collect the latest AQI and weather data.
 
 What it does:
@@ -10,8 +9,6 @@ What it does:
 3. Updates the local CSV backup.
 4. Pushes only newly collected rows to Hopsworks.
 
-Run:
-    python -m src.feature_pipeline
 """
 
 import os
@@ -148,11 +145,6 @@ def save_features(df):
     else:
         combined = df.copy()
 
-    # Make sure the weather columns always exist, even if this batch of
-    # data doesn't have any (e.g. backfilled historical rows). Without
-    # this, if the local CSV ever gets rebuilt from backfill data alone,
-    # these columns would be missing entirely instead of just empty -
-    # and train_current.py would crash looking for them.
     weather_columns = [
         "temperature", "humidity", "pressure",
         "wind_speed", "wind_deg", "cloudiness", "rain_1h",
@@ -185,7 +177,7 @@ def save_features(df):
         f"to {FEATURES_FILE}"
     )
 
-    # Push only the newly collected rows,
+    # Pushing only the newly collected rows,
     # but include their calculated features.
     new_rows = combined.merge(
         df[["city", "timestamp"]],

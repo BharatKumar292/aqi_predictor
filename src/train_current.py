@@ -5,13 +5,6 @@ This model predicts AQI using the environmental readings
 from the same time, such as PM2.5, PM10, CO, NO2,
 temperature, humidity and other weather values.
 
-It does not use previous AQI values or lag features.
-
-The data is loaded from Hopsworks first. If Hopsworks
-is not available, the local CSV file is used instead.
-
-Run:
-    python -m src.train_current
 """
 
 import os
@@ -306,21 +299,13 @@ def main():
                     "wb"
                 ) as f:
                     # Saving the full payload (not just the bare model)
-                    # here on purpose - the dashboard needs the feature
-                    # column list too when it loads this model, and it
                     # loads Hopsworks models the exact same way it loads
-                    # the local .pkl file, so the format needs to match.
                     pickle.dump(
                         payload,
                         f
                     )
 
-                # Hopsworks stores metrics as JSON, and JSON does not
-                # support NaN values. R2 can come out as NaN when there
-                # are too few test rows to calculate it properly, so we
-                # replace NaN with 0.0 here just for the upload - the
-                # real value (including NaN, if that's what it is) is
-                # still saved correctly in our local model_current.pkl.
+                
                 def clean_metric(value):
                     if value is None:
                         return 0.0

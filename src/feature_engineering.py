@@ -1,6 +1,5 @@
 """
 This file prepares the data collected from the OpenWeather API.
-
 It calculates the AQI from the pollutant values and also creates
 some extra features that we can use when training our models.
 
@@ -8,9 +7,6 @@ There are two sets of features:
 1. Features for predicting the current AQI.
 2. Features for predicting AQI for the next 1 to 3 days.
 
-The current AQI model does not use previous AQI values because
-that could cause data leakage. The forecast model can use previous
-AQI values because they are available before the prediction time.
 """
 
 from datetime import datetime, timezone

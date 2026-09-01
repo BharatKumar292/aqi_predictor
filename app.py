@@ -4,12 +4,8 @@ AQI Predictor Dashboard
 Shows current AQI, historical trends, and 3-day forecasts for Sukkur,
 Karachi, and Lahore.
 
-Run locally:
-    streamlit run app.py
-
 Data and models are loaded from Hopsworks (feature store + model
-registry) - a local file is only used as a backup if Hopsworks can't
-be reached.
+registry) 
 """
 
 import os
@@ -42,9 +38,7 @@ def aqi_level(aqi):
     return "Unknown", "#888888"
 
 
-# ------------------------------------------------------------------
 # Data / model loading - Hopsworks first, local file as backup only
-# ------------------------------------------------------------------
 @st.cache_data(ttl=3600)
 def load_data():
     try:

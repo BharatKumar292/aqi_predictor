@@ -1,18 +1,7 @@
 """
 This file is used to collect old pollution data from OpenWeather.
 
-We run this script to get enough historical data for training our
-AQI prediction model.
-
-Run this file using:
-
-    python -m src.backfill
-
-This script collects historical pollution data for our cities.
-The weather data is collected separately by the current weather
-pipeline.
-
-We are trying to collect around 2 years of historical data.
+trying to collect around 2 years of historical data.
 The amount of old data we can get depends on our OpenWeather API plan.
 
 IMPORTANT: this script pushes data to Hopsworks in small chunks
