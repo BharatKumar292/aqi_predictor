@@ -20,7 +20,7 @@ Shows current AQI and a 3-day forecast for Sukkur, Karachi, and Lahore, pulling 
 
 ## 📊 Dashboard
 
-![Dashboard overview](screenshots/dashboard.png)
+<img width="1777" height="865" alt="dashboard" src="https://github.com/user-attachments/assets/fec36195-b612-4e7b-81c2-0fc8acc98414" />
 
 *Current AQI for all three cities, city-level detail with pollutant readings, and a 3-day forecast built from two separate models.*
 
