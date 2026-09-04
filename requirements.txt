@@ -8,3 +8,4 @@ hopsworks
 confluent-kafka
 plotly
 shap
+matplotlib
