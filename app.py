@@ -5,7 +5,7 @@ Shows current AQI, historical trends, and 3-day forecasts for Sukkur,
 Karachi, and Lahore.
 
 Data and models are loaded from Hopsworks (feature store + model
-registry) 
+registry)-
 """
 
 import os
@@ -13,6 +13,13 @@ import pickle
 
 import pandas as pd
 import streamlit as st
+
+try:
+    import shap
+    import matplotlib.pyplot as plt
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
 
 from src.config import FEATURES_FILE, MODELS_DIR, CITIES
 from src.feature_engineering import CURRENT_PREDICTION_FEATURES
@@ -38,7 +45,9 @@ def aqi_level(aqi):
     return "Unknown", "#888888"
 
 
+# ------------------------------------------------------------------
 # Data / model loading - Hopsworks first, local file as backup only
+# ------------------------------------------------------------------
 @st.cache_data(ttl=3600)
 def load_data():
     try:
@@ -266,23 +275,68 @@ else:
             })
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
-    # Simple feature importance for the 24h forecast model
+    # SHAP explainability for the 24h forecast model
     if 24 in forecast_models and forecast_models[24] is not None:
-        with st.expander("Why this prediction? (feature importance, 24h model)"):
+        with st.expander("Why this prediction? (SHAP explainability, 24h model)"):
             model = forecast_models[24]["model"]
             feature_columns = forecast_models[24]["feature_columns"]
-            try:
-                if hasattr(model, "feature_importances_"):
-                    importances = model.feature_importances_
-                elif hasattr(model, "named_steps"):
-                    importances = abs(model.named_steps["ridge"].coef_)
-                else:
-                    importances = abs(model.coef_)
-                imp_df = pd.DataFrame({"feature": feature_columns, "importance": importances})
-                imp_df = imp_df.sort_values("importance", ascending=False).head(10)
-                st.bar_chart(imp_df.set_index("feature"))
-            except Exception:
-                st.caption("Feature importance not available for this model type.")
+
+            if not SHAP_AVAILABLE:
+                st.caption("Install the `shap` package (`pip install shap`) to see this.")
+            else:
+                try:
+                    # Build a sample feature matrix the same way predict_forecast_aqi does,
+                    # using recent rows across all cities so SHAP has real, varied examples.
+                    base_cols = [c for c in feature_columns if not c.startswith("city_")]
+                    sample_source = df.dropna(subset=base_cols).tail(200)
+
+                    sample_rows = []
+                    for _, r in sample_source.iterrows():
+                        row = {col: r.get(col, 0) for col in base_cols}
+                        for col in feature_columns:
+                            if col.startswith("city_"):
+                                city_name = col.replace("city_", "")
+                                row[col] = 1 if city_name == r["city"] else 0
+                        sample_rows.append(row)
+                    X_sample = pd.DataFrame(sample_rows)[feature_columns]
+
+                    if hasattr(model, "feature_importances_"):
+                        # Tree-based model (Random Forest) - use the fast, exact TreeExplainer
+                        explainer = shap.TreeExplainer(model)
+                        shap_values = explainer.shap_values(X_sample)
+
+                        fig, ax = plt.subplots()
+                        shap.summary_plot(shap_values, X_sample, show=False, max_display=10)
+                        st.pyplot(fig, use_container_width=True)
+                        plt.close(fig)
+                        st.caption(
+                            "Each point is one historical reading. Red = high value for that "
+                            "feature, blue = low. Position left/right shows whether that value "
+                            "pushed the AQI prediction down or up for that particular reading."
+                        )
+                    else:
+                        # Linear model (Ridge) - fall back to coefficient-based importance
+                        importances = abs(model.named_steps["ridge"].coef_) if hasattr(model, "named_steps") else abs(model.coef_)
+                        imp_df = pd.DataFrame({"feature": feature_columns, "importance": importances})
+                        imp_df = imp_df.sort_values("importance", ascending=False).head(10)
+                        st.bar_chart(imp_df.set_index("feature"))
+                        st.caption("This model is linear, so SHAP falls back to coefficient magnitude here.")
+                except Exception as e:
+                    st.caption(f"Could not compute SHAP values: {e}")
+
+st.divider()
+st.subheader("Correlation between pollutants and AQI")
+corr_cols = ["aqi", "pm2_5", "pm10", "co", "no", "no2", "o3", "so2", "nh3"]
+corr_matrix = df[corr_cols].corr(numeric_only=True)
+st.dataframe(
+    corr_matrix.style.background_gradient(cmap="RdYlGn_r", vmin=-1, vmax=1).format("{:.2f}"),
+    use_container_width=True,
+)
+aqi_corr = corr_matrix["aqi"].drop("aqi").sort_values(ascending=False)
+st.caption(
+    f"Strongest correlation with AQI: **{aqi_corr.index[0]}** ({aqi_corr.iloc[0]:.2f}). "
+    f"Computed from all {len(df):,} collected readings across the three cities."
+)
 
 st.divider()
 st.subheader("Pollutant trend")

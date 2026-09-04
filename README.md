@@ -20,9 +20,6 @@ Shows current AQI and a 3-day forecast for Sukkur, Karachi, and Lahore, pulling 
 
 ## 📊 Dashboard
 
-<img width="1777" height="865" alt="dashboard" src="https://github.com/user-attachments/assets/fec36195-b612-4e7b-81c2-0fc8acc98414" />
-
-*Current AQI for all three cities, city-level detail with pollutant readings, and a 3-day forecast built from two separate models.*
 
 ---
 
@@ -198,10 +195,6 @@ The default `time_travel_format` needed the `delta` Python library, which isn't 
 ### Why does the backfill script push data in small chunks instead of one batch?
 
 The first attempt pushed all ~50,000 backfilled rows to Hopsworks in a single insert. The free-tier compute couldn't materialize a batch that large — the background job kept failing. Splitting the backfill into 30-day chunks (~700 rows each) and pushing incrementally matched what already worked reliably for the hourly pipeline's small pushes.
-
-### Why does the dashboard fall back to a local CSV/pickle file?
-
-Hopsworks' free-tier query service is occasionally slow or briefly unreachable (DNS hiccups, connection resets). Rather than the dashboard crashing when that happens, it tries Hopsworks first and only falls back to a local backup file if the live read fails — Hopsworks remains the real source of truth, the local file is just a safety net.
 
 ---
 
