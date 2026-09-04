@@ -16,10 +16,15 @@ import streamlit as st
 
 try:
     import shap
-    import matplotlib.pyplot as plt
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
+
+try:
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 
 from src.config import FEATURES_FILE, MODELS_DIR, CITIES
 from src.feature_engineering import CURRENT_PREDICTION_FEATURES
@@ -273,7 +278,7 @@ else:
                 "R\u00b2": round(m["r2"], 3),
                 "Trained": payload["trained_at"][:19].replace("T", " "),
             })
-        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width='stretch')
 
     # SHAP explainability for the 24h forecast model
     if 24 in forecast_models and forecast_models[24] is not None:
@@ -281,8 +286,12 @@ else:
             model = forecast_models[24]["model"]
             feature_columns = forecast_models[24]["feature_columns"]
 
-            if not SHAP_AVAILABLE:
+            if not SHAP_AVAILABLE and not MATPLOTLIB_AVAILABLE:
+                st.caption("Install the `shap` and `matplotlib` packages to see this.")
+            elif not SHAP_AVAILABLE:
                 st.caption("Install the `shap` package (`pip install shap`) to see this.")
+            elif not MATPLOTLIB_AVAILABLE:
+                st.caption("Install the `matplotlib` package (`pip install matplotlib`) to see this.")
             else:
                 try:
                     # Build a sample feature matrix the same way predict_forecast_aqi does,
@@ -328,10 +337,14 @@ st.divider()
 st.subheader("Correlation between pollutants and AQI")
 corr_cols = ["aqi", "pm2_5", "pm10", "co", "no", "no2", "o3", "so2", "nh3"]
 corr_matrix = df[corr_cols].corr(numeric_only=True)
-st.dataframe(
-    corr_matrix.style.background_gradient(cmap="RdYlGn_r", vmin=-1, vmax=1).format("{:.2f}"),
-    use_container_width=True,
-)
+if MATPLOTLIB_AVAILABLE:
+    st.dataframe(
+        corr_matrix.style.background_gradient(cmap="RdYlGn_r", vmin=-1, vmax=1).format("{:.2f}"),
+        width='stretch',
+    )
+else:
+    st.dataframe(corr_matrix.round(2), width='stretch')
+    st.caption("Install the `matplotlib` package for a colored heatmap.")
 aqi_corr = corr_matrix["aqi"].drop("aqi").sort_values(ascending=False)
 st.caption(
     f"Strongest correlation with AQI: **{aqi_corr.index[0]}** ({aqi_corr.iloc[0]:.2f}). "
