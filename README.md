@@ -172,8 +172,10 @@ aqi_predictor/
 │   └── *.pkl                        # local backup of trained models
 ├── app.py                           # Streamlit dashboard
 ├── requirements.txt
-├── README.md
-└── PROJECT_EXPLANATION.md           # plain-language walkthrough for presentations
+├── screenshots/
+│   └── *.png                        # images of dashboard and aqi model training  
+├── AQI_Project_Report.pdf           # final report of project           
+└── README.md
 ```
 
 ---
