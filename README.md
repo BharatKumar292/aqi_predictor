@@ -20,6 +20,7 @@ Shows current AQI and a 3-day forecast for Sukkur, Karachi, and Lahore, pulling 
 
 ## 📊 Dashboard
 
+<img width="1797" height="827" alt="dashboard" src="https://github.com/user-attachments/assets/a5fa5385-f067-4e52-a169-8856bd87fbe5" />
 
 ---
 
