@@ -187,6 +187,8 @@ aqi_predictor/
 
 ### Note: if shap explainabiltiy doesn't show on dashboard directly, it is there on dashboard, click arrow below the model details.
 
+--- 
+
 ## 🔧 Engineering Decisions
 
 ### Why two separate models instead of one?
