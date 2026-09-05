@@ -181,11 +181,11 @@ aqi_predictor/
 
 ---
 
-## Model Screenshot
+## Model Details Screenshot
 
 <img width="1728" height="825" alt="image" src="https://github.com/user-attachments/assets/39c49857-7f19-4ab4-9f17-a8fe6b8bb0ed" />
 
-- Note: if shap explainabiltiy doesn't show on dashboard directly, it is there on dashboard, click arrow below the model details.
+### Note: if shap explainabiltiy doesn't show on dashboard directly, it is there on dashboard, click arrow below the model details.
 
 ## 🔧 Engineering Decisions
 
